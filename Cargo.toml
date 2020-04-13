@@ -1,6 +1,6 @@
 [package]
 name = "dvb-tune"
-version = "0.0.0-snapshot"
+version = "0.0.0"
 authors = ["Russel Winder <russel@winder.org.uk>"]
 categories = ["command line applications"]
 keywords = ["dvb", "tuner", "gstreamer"]
