@@ -2,7 +2,7 @@ image: "rust:latest"
 
 before_script:
   - apt-get update -yq
-  - apt-get install -y libdvbv5-dev
+  - apt-get install -y libdvbv5-dev libudev-dev
 
 test:cargo:
   script:
