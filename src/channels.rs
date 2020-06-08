@@ -1,7 +1,7 @@
 /*
  *  DVBTune — for generating a DVBv5 channels file from a DVBv5 transmitter file.
  *
- *  Copyright © 2019  Russel Winder
+ *  Copyright © 2019, 2020  Russel Winder
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -176,7 +176,9 @@ impl TransmitterData {
                 let rc = dvbv5_sys::dvb_retrieve_entry_prop(entry, dvbv5_sys::DTV_FREQUENCY, &mut frequency as *mut u32);
                 assert_eq!(rc, 0);
                 frontend_parameters.log(dvbv5_sys::LOG_INFO, &format!("\nScanning frequency #{} {}", count, frequency));
-                frontend_parameters.log(dvbv5_sys::LOG_INFO, &format!("Channel Name: {}", CStr::from_ptr((*entry).channel).to_str().unwrap()));
+                if ! (*entry).channel.is_null() {
+                    frontend_parameters.log(dvbv5_sys::LOG_INFO, &format!("Channel Name: {}", CStr::from_ptr((*entry).channel).to_str().unwrap()));
+                }
                 if ! (*entry).vchannel.is_null() {
                     frontend_parameters.log(dvbv5_sys::LOG_INFO, &format!("Channel number: {}", CStr::from_ptr((*entry).vchannel).to_str().unwrap()));
                 }

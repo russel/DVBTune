@@ -1,7 +1,8 @@
 # DVBTune
 
-[![GitLab CI](https://gitlab.com/Russel/DVBTune/badges/master/build.svg)](https://gitlab.com/Russel/dvbtune)
-[![Licence](https://img.shields.io/badge/license-GPL_3-green.svg)](https://www.gnu.org/licenses/gpl-3.0.en.html)
+GitLab CI: [![GitLab CI](https://gitlab.com/Russel/DVBTune/badges/master/pipeline.svg)](https://gitlab.com/Russel/dvbtune)
+&nbsp;&nbsp;&nbsp;&nbsp;
+Licence: [![Licence](https://img.shields.io/badge/license-GPL_3-green.svg)](https://www.gnu.org/licenses/gpl-3.0.en.html)
 
 A program to read a DVB transmitter file, and use a connected DVB tuner to search for all the channels and
 create a GStreamer channels file.

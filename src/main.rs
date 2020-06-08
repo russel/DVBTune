@@ -17,13 +17,6 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-extern crate clap;
-
-extern crate dvbv5_sys;
-extern crate dvbv5;
-
-extern crate libc;
-
 mod channels;
 
 use clap::{Arg, App};

@@ -1,12 +1,13 @@
 [package]
 name = "dvb-tune"
-version = "0.0.0"
+version = "0.1.0"
 authors = ["Russel Winder <russel@winder.org.uk>"]
 categories = ["command line applications"]
 keywords = ["dvb", "tuner", "gstreamer"]
 license = "GPL-3.0"
 description = "dvb-tune is a command line application for generating a DVBv5 channels file from a DVBv5 transmitter file."
 readme = "README.md"
+edition = "2018"
 
 [dependencies]
 clap = "*"
