@@ -2,6 +2,8 @@
 
 GitLab CI: [![GitLab CI](https://gitlab.com/Russel/DVBTune/badges/master/pipeline.svg)](https://gitlab.com/Russel/dvbtune)
 &nbsp;&nbsp;&nbsp;&nbsp;
+Travis-CI: [![Travis-CI build status](https://travis-ci.org/russel/DVBTune.svg?branch=master)](https://travis-ci.org/russel/DVBTune)
+
 Licence: [![Licence](https://img.shields.io/badge/license-GPL_3-green.svg)](https://www.gnu.org/licenses/gpl-3.0.en.html)
 
 A program to read a DVB transmitter file, and use a connected DVB tuner to search for all the channels and
