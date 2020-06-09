@@ -1,0 +1,15 @@
+sudo: true
+dist: bionic
+language: rust
+
+before_install:
+  - export RUST_BACKTRACE=1
+
+before_script:
+  - sudo apt-get -qq update
+  - sudo apt-get install -y libdvbv5-dev libudev-dev
+
+script:
+  - cargo build
+  - cargo test
+  - cargo build --release
