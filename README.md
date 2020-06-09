@@ -11,8 +11,6 @@ This is essentially a Rust version of [dvbv5-scan](https://www.linuxtv.org/wiki/
 from [libdvbv5](https://linuxtv.org/docs/libdvbv5/). It is an example of using the Rust binding to libdvbv5,
 the FFI is [dvbv5_sys](https://crates.io/crates/dvbv5-sys) and the Rust side is [dvbv5](.https://crates.io/crates/dvbv5)
 
-There is a [D version](https://github.com/russel/DVBTune) of this program over on GitHub
-
 ## Licence
 
 This code is licenced under GPLv3.
