@@ -112,7 +112,7 @@ impl TransmitterData {
                         }
                         let buffer_size = 1024;
                         let mut buffer = ['a'; 1024]; // Can't use the "variable".
-                        let mut current_position: *mut i8 = buffer.as_ptr() as *mut i8;
+                        let mut current_position = buffer.as_ptr() as *mut i8;
                         let mut usable_length = buffer_size;
                         //
                         // TODO dvb_fe_snprintf_stat returns the number of characters "printed", and a negative value on error.
@@ -156,18 +156,24 @@ impl TransmitterData {
         }
     }
 
-    pub fn scan(&self, frontend_id: &FrontendId) -> ChannelsData {
-        // TODO These should be defaulted parameters.
-        let other_nit = 0;
-        let timeout_multiplier = 1;
-        let get_detected = 1;
-        let get_nit = 1;
-        let dont_add_new_frequencies = false;
-        //
+    pub fn scan(
+        &self,
+        frontend_id: &FrontendId,
+        other_nit: Option<u32>,
+        timeout_multiplier: Option<u32>,
+        get_detected: Option<i32>,
+        get_nit: Option<i32>,
+        dont_add_new_frequencies: Option<bool>
+    ) -> ChannelsData {
+        let other_nit = other_nit.unwrap_or(0);
+        let timeout_multiplier = timeout_multiplier.unwrap_or(1);
+        let get_detected = get_detected.unwrap_or(1);
+        let get_nit = get_nit.unwrap_or(1);
+        let dont_add_new_frequencies = dont_add_new_frequencies.unwrap_or(false);
         // TODO Must do better error handling here.
         let frontend_parameters = FrontendParametersPtr::new(&frontend_id,None, None).unwrap();
         let dmx_fd = DmxFd::new(&frontend_id).unwrap();
-        let mut channels_file: *mut dvbv5_sys::dvb_file = 0 as *mut dvbv5_sys::dvb_file;
+        let mut channels_file = 0 as *mut dvbv5_sys::dvb_file;
         let mut count = 1;
         unsafe {
             let mut entry = (*self.ptr.get_c_ptr()).first_entry;
@@ -202,5 +208,14 @@ impl TransmitterData {
             }
         }
         ChannelsData::new_from_fileptr(FilePtr::new_from_dvb_file_ptr(channels_file))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    fn gratuitous_test() {
+        assert_eq!(1, 1);
     }
 }
