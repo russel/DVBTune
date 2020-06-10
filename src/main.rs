@@ -17,6 +17,19 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+//! A command line application for writing channel files having scanned for
+//! channels using a DVB USB device for a given transmitter file.
+//!
+//! This is essentially a Rust version of
+//! [dvbv5-scan](https://www.linuxtv.org/wiki/index.php/Dvbv5-scan) from
+//! [libdvbv5](https://linuxtv.org/docs/libdvbv5/) which is part of the
+//! [V4L2 project](https://linuxtv.org/wiki/index.php/V4l-utils) that is part of the
+//! [Linux TV](https://linuxtv.org) effort.
+//!
+//! This application makes use of the [dvbv5 crate](https://gitlab.com/Russel/rust-libdvbv5)
+//! which in turn uses the  [dvbv5-sys](https://gitlab.com/Russel/rust-libdvbv5-sys) crate which
+//! provides the Rust FFI to the C API of libdvbv5.
+
 use std::path::Path;
 
 use clap::{Arg, App};
@@ -71,11 +84,11 @@ fn main() {
         Ok(transmitter_data) => {
             match transmitter_data.scan(&frontend_id, None, Some(timeout_multiplier), None, None, None) {
                 Ok(channels_data) => {
-                    if ! channels_data.write(output_path,&frontend_id) {
+                    if ! channels_data.write(output_path) {
                         println!("**** Error writing channels data ****");
                     }
                 },
-                Err(e) => println!("**** No receiver, cannot scan. ****"),
+                Err(_) => println!("**** No receiver, cannot scan. *****"),
             };
         },
         Err(_) => println!("**** Could not get transmitter data. ****"),
