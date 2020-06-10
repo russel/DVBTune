@@ -17,18 +17,17 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-mod channels;
+use std::path::Path;
 
 use clap::{Arg, App};
+
+mod channels;
 
 fn main() {
     let matches = App::new("dvb-tune")
         .version(env!("CARGO_PKG_VERSION"))
         .author("Russel Winder <russel@winder.org.uk>")
-        .about("Generate a DVBv5 channels file from a DVBv5 transmitter file.
-
-A transmitter file name.
-")
+        .about("Generate a DVBv5 channels file from a DVBv5 transmitter file.")
         .arg(Arg::with_name("adapter")
             .short("a")
             .long("adapter")
@@ -50,6 +49,13 @@ A transmitter file name.
             .help("Path to output file.")
             .takes_value(true)
             .default_value("dvb-channels.conf"))
+        .arg(Arg::with_name("timeout_multiplier")
+            .short("t")
+            .long("timeout_multiplier")
+            .value_name("MULTIPLIER")
+            .help("Multiplier used for timeouts to obtain tables.")
+            .takes_value(true)
+            .default_value("1"))
         .arg(Arg::with_name("TRANSMITTER_FILE")
             .help("Path to the transmitter file to use as input.")
             .required(true)
@@ -57,13 +63,20 @@ A transmitter file name.
         .get_matches();
     let adapter_number = matches.value_of("adapter").unwrap().parse::<u8>().expect("Couldn't parse adapter value as a positive integer.");
     let frontend_number = matches.value_of("frontend").unwrap().parse::<u8>().expect("Couldn't parse frontend value as a positive integer.");
-    let output_path = matches.value_of("output_path").unwrap();
-    let transmitter_file_path = matches.value_of("TRANSMITTER_FILE").unwrap();
+    let output_path = Path::new(matches.value_of("output_path").unwrap());
+    let timeout_multiplier = matches.value_of("timeout_multiplier").unwrap().parse::<u32>().expect("Couldn't parse timeout multiplier value as an unsigned integer.");
+    let transmitter_file_path = Path::new(matches.value_of("TRANSMITTER_FILE").unwrap());
     let frontend_id = dvbv5::types::FrontendId{adapter_number, frontend_number};
     match channels::TransmitterData::new(transmitter_file_path) {
         Ok(transmitter_data) => {
-            let channels_data = transmitter_data.scan(&frontend_id, None, None, None, None, None);
-            channels_data.write(output_path,&frontend_id);
+            match transmitter_data.scan(&frontend_id, None, Some(timeout_multiplier), None, None, None) {
+                Ok(channels_data) => {
+                    if ! channels_data.write(output_path,&frontend_id) {
+                        println!("**** Error writing channels data ****");
+                    }
+                },
+                Err(e) => println!("**** No receiver, cannot scan. ****"),
+            };
         },
         Err(_) => println!("**** Could not get transmitter data. ****"),
     };

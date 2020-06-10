@@ -19,6 +19,7 @@
 
 use std::ffi::{CStr,CString};
 use std::io::{Write, stderr};
+use std::path::Path;
 use std::thread::sleep;
 use std::time::Duration;
 
@@ -34,27 +35,29 @@ pub struct ChannelsData {
 }
 
 impl ChannelsData {
-    pub fn new_from_str(channels_data_path:&str) -> Result<ChannelsData, ()> {
-        match FilePtr::new_from_path(channels_data_path, dvbv5_sys::fe_delivery_system_SYS_UNDEFINED, dvbv5_sys::dvb_file_formats_FILE_DVBV5) {
-            Ok(ptr) => Ok(ChannelsData { ptr }),
+    pub fn new(channels_data:&Path) -> Result<ChannelsData, ()> {
+        match FilePtr::new(channels_data, None, None) {
+            Ok(ptr) => Ok(ChannelsData{ptr}),
             Err(_) => Err(()),
         }
     }
+
     pub fn new_from_fileptr(ptr: FilePtr) -> ChannelsData {
         ChannelsData{ptr}
     }
-    pub fn write(&self, output_path: &str, fei: &FrontendId) -> bool {
+
+    pub fn write(&self, output_path: &Path, fei: &FrontendId) -> bool {
         if self.ptr.get_c_ptr().is_null() {
             panic!("ChannelData instance not properly initialised.");
         } else {
             match FrontendParametersPtr::new(fei, None, None) {
                 Ok(frontend_parameters) => {
                     unsafe {
-                        if dvbv5_sys::dvb_write_file_format(CString::new(output_path).unwrap().as_ptr(), self.ptr.get_c_ptr(), (*frontend_parameters.get_c_ptr()).current_sys, dvbv5_sys::dvb_file_formats_FILE_DVBV5) == 0 {
-                            frontend_parameters.log(dvbv5_sys::LOG_INFO, &format!("\nWrote virtual channels file to: {}", output_path));
+                        if dvbv5_sys::dvb_write_file_format(CString::new(output_path.to_str().unwrap()).unwrap().as_ptr(), self.ptr.get_c_ptr(), (*frontend_parameters.get_c_ptr()).current_sys, dvbv5_sys::dvb_file_formats_FILE_DVBV5) == 0 {
+                            frontend_parameters.log(dvbv5_sys::LOG_INFO, &format!("\nWrote virtual channels file to: {}", output_path.display()));
                             true
                         } else {
-                            frontend_parameters.log(dvbv5_sys::LOG_INFO, &format!("\nWrite to {} failed.", output_path));
+                            frontend_parameters.log(dvbv5_sys::LOG_INFO, &format!("\nWrite to {} failed.", output_path.display()));
                             false
                         }
                     }
@@ -71,8 +74,8 @@ pub struct TransmitterData {
 }
 
 impl TransmitterData {
-    pub fn new(transmitter_file_path: &str) -> Result<TransmitterData, ()> {
-        match FilePtr::new_from_path(transmitter_file_path, dvbv5_sys::fe_delivery_system_SYS_UNDEFINED, dvbv5_sys::dvb_file_formats_FILE_DVBV5) {
+    pub fn new(transmitter_file: &Path) -> Result<TransmitterData, ()> {
+        match FilePtr::new(transmitter_file, None, None) {
             Ok(ptr) => Ok(TransmitterData { ptr }),
             Err(_) => Err(()),
         }
@@ -156,66 +159,102 @@ impl TransmitterData {
         }
     }
 
+    /// Perform a scan on the transponders listed in this transmitter file.
+    ///
+    /// * `frontend_id` – the frontend to use for the scan.
+    /// * `other_nit` – an `Option` unsigned integer; use alternate table IDs for NIT and other
+    /// tables. Default 0.
+    /// * `timeout_multiplier` – an `Option` unsigned integer; increases the timeout for each
+    /// table reception. Default 1.
+    /// * `get_detected` –an `Option` `bool`; if `true`, uses the frontend parameters obtained
+    /// from the device driver (such as modulation, FEC, etc). Default `true`.
+    /// * `get_nit` – an `Option` `bool`; if true, uses the parameters obtained from the
+    /// MPEG-TS NIT table to add newly detected transponders. Default `true`.
+    /// * `dont_add_new_frequencies` – an `Option` `bool` determining whether newly found
+    /// frequencies should be scanned for channels. Default `false`.
     pub fn scan(
         &self,
         frontend_id: &FrontendId,
         other_nit: Option<u32>,
         timeout_multiplier: Option<u32>,
-        get_detected: Option<i32>,
-        get_nit: Option<i32>,
+        get_detected: Option<bool>,
+        get_nit: Option<bool>,
         dont_add_new_frequencies: Option<bool>
-    ) -> ChannelsData {
-        let other_nit = other_nit.unwrap_or(0);
-        let timeout_multiplier = timeout_multiplier.unwrap_or(1);
-        let get_detected = get_detected.unwrap_or(1);
-        let get_nit = get_nit.unwrap_or(1);
+    ) -> Result<ChannelsData, ()> {
+        let get_detected = get_detected.unwrap_or(true);
+        let get_nit = get_nit.unwrap_or(true);
         let dont_add_new_frequencies = dont_add_new_frequencies.unwrap_or(false);
-        // TODO Must do better error handling here.
-        let frontend_parameters = FrontendParametersPtr::new(&frontend_id,None, None).unwrap();
-        let dmx_fd = DmxFd::new(&frontend_id).unwrap();
-        let mut channels_file = 0 as *mut dvbv5_sys::dvb_file;
-        let mut count = 1;
-        unsafe {
-            let mut entry = (*self.ptr.get_c_ptr()).first_entry;
-            while ! entry.is_null() {
-                let mut frequency: u32 = 0;
-                let rc = dvbv5_sys::dvb_retrieve_entry_prop(entry, dvbv5_sys::DTV_FREQUENCY, &mut frequency as *mut u32);
-                assert_eq!(rc, 0);
-                frontend_parameters.log(dvbv5_sys::LOG_INFO, &format!("\nScanning frequency #{} {}", count, frequency));
-                if ! (*entry).channel.is_null() {
-                    frontend_parameters.log(dvbv5_sys::LOG_INFO, &format!("Channel Name: {}", CStr::from_ptr((*entry).channel).to_str().unwrap()));
-                }
-                if ! (*entry).vchannel.is_null() {
-                    frontend_parameters.log(dvbv5_sys::LOG_INFO, &format!("Channel number: {}", CStr::from_ptr((*entry).vchannel).to_str().unwrap()));
-                }
-                if ! (*entry).location.is_null() {
-                    frontend_parameters.log(dvbv5_sys::LOG_INFO, &format!("Channel location: {}", CStr::from_ptr((*entry).location).to_str().unwrap()));
-                }
-                match ScanHandlerPtr::new(&frontend_parameters, entry, &dmx_fd, Some(Self::frontend_check), other_nit, timeout_multiplier) {
-                    Ok(scan_handler) => {
-                        if (*frontend_parameters.get_c_ptr()).abort != 0 { break; }
-                        if dvbv5_sys::dvb_store_channel(&mut channels_file, frontend_parameters.get_c_ptr(), scan_handler.get_c_ptr(), get_detected, get_nit) != 0 {
-                            frontend_parameters.log(dvbv5_sys::LOG_INFO, "Failed to store some channels.");
+        match FrontendParametersPtr::new(&frontend_id,None, None) {
+            Ok(frontend_parameters) => {
+                let dmx_fd = DmxFd::new(&frontend_id).unwrap();
+                // NB Must use a low-level pointer at this time since it will be set during the dvb_store_channel call.
+                let mut channels_file = 0 as *mut dvbv5_sys::dvb_file;
+                let mut count = 1;
+                // Calls to unsafe functions and dereferencing pointers so make whole block unsafe.
+                unsafe {
+                    let mut entry = (*self.ptr.get_c_ptr()).first_entry;
+                    while !entry.is_null() {
+                        let mut frequency: u32 = 0;
+                        let rc = dvbv5_sys::dvb_retrieve_entry_prop(entry, dvbv5_sys::DTV_FREQUENCY, &mut frequency as *mut u32);
+                        assert_eq!(rc, 0);
+                        frontend_parameters.log(dvbv5_sys::LOG_INFO, &format!("\nScanning frequency #{} {}", count, frequency));
+                        if !(*entry).channel.is_null() {
+                            frontend_parameters.log(dvbv5_sys::LOG_INFO, &format!("Channel name: {}", CStr::from_ptr((*entry).channel).to_str().unwrap()));
                         }
-                        if ! dont_add_new_frequencies {
-                            dvbv5_sys::dvb_add_scaned_transponders(frontend_parameters.get_c_ptr(), scan_handler.get_c_ptr(), (*self.ptr.get_c_ptr()).first_entry, entry);
+                        if !(*entry).vchannel.is_null() {
+                            frontend_parameters.log(dvbv5_sys::LOG_INFO, &format!("Channel number: {}", CStr::from_ptr((*entry).vchannel).to_str().unwrap()));
                         }
-                    },
-                    Err(_) => frontend_parameters.log(dvbv5_sys::LOG_INFO, "Failed to initialise scan handler."),
+                        if !(*entry).location.is_null() {
+                            frontend_parameters.log(dvbv5_sys::LOG_INFO, &format!("Channel location: {}", CStr::from_ptr((*entry).location).to_str().unwrap()));
+                        }
+                        match ScanHandlerPtr::new(&frontend_parameters, entry, &dmx_fd, Some(Self::frontend_check), other_nit, timeout_multiplier) {
+                            Ok(scan_handler) => {
+                                if (*frontend_parameters.get_c_ptr()).abort != 0 { break; }
+                                if dvbv5_sys::dvb_store_channel(&mut channels_file, frontend_parameters.get_c_ptr(), scan_handler.get_c_ptr(), get_detected as i32, get_nit as i32) != 0 {
+                                    frontend_parameters.log(dvbv5_sys::LOG_INFO, "Failed to store some channels.");
+                                }
+                                if !dont_add_new_frequencies {
+                                    dvbv5_sys::dvb_add_scaned_transponders(frontend_parameters.get_c_ptr(), scan_handler.get_c_ptr(), (*self.ptr.get_c_ptr()).first_entry, entry);
+                                }
+                            },
+                            Err(_) => frontend_parameters.log(dvbv5_sys::LOG_INFO, "Failed to initialise scan handler."),
+                        }
+                        entry = (*entry).next;
+                        count += 1;
+                    }
                 }
-                entry = (*entry).next;
-                count += 1;
-            }
+                Ok(ChannelsData::new_from_fileptr(FilePtr::new_from_dvb_file_ptr(channels_file).unwrap()))
+            },
+            Err(e) => Err(e),
         }
-        ChannelsData::new_from_fileptr(FilePtr::new_from_dvb_file_ptr(channels_file))
     }
 }
 
 #[cfg(test)]
 mod tests {
 
+    use std::path::Path;
+
+    use super::*;
+
     #[test]
-    fn gratuitous_test() {
-        assert_eq!(1, 1);
+    fn fail_to_scan_with_silly_frontend() {
+        // This is the Debian location. Fedora has it somewhere else.
+        let path = Path::new("/usr/share/dvb/dvb-t/uk-CrystalPalace");
+        if path.exists() {
+            match TransmitterData::new(path) {
+                Ok(transmitter_data) => {
+                    // NB Assume that this FrontendId doesn't exist at the time of the test.
+                    // Does any adapter have this many frontends?
+                    if transmitter_data.scan(&FrontendId{adapter_number: 254, frontend_number: 254}, None, None, None, None, None).is_ok() {
+                        assert!(false, "Unexpected working scan.");
+                    }
+                },
+                Err(e) => assert!(false, "Could not read transmitter data."),
+            }
+        } else {
+            println!("Path {} did not exist, no test undertaken.", path.display());
+        }
+
     }
 }
