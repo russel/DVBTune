@@ -18,7 +18,7 @@
  */
 
 //! A command line application for writing channel files having scanned for
-//! channels using a DVB USB device for a given transmitter file.
+//! channels using a DVB device for a given transmitter file.
 //!
 //! This is essentially a Rust version of
 //! [dvbv5-scan](https://www.linuxtv.org/wiki/index.php/Dvbv5-scan) from
