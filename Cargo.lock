@@ -54,7 +54,7 @@ dependencies = [
 [[package]]
 name = "dvbv5"
 version = "0.2.5"
-source = "git+https://gitlab.com/Russel/rust-libdvbv5#a728727c06d107889b4d83a7a3f343aaa5246a5f"
+source = "git+https://gitlab.com/Russel/rust-libdvbv5#7cae365d2795fc0541f392e728b568b7ef9c5131"
 dependencies = [
  "dvbv5-sys",
  "libc",
