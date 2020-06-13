@@ -54,7 +54,8 @@ dependencies = [
 [[package]]
 name = "dvbv5"
 version = "0.2.5"
-source = "git+https://gitlab.com/Russel/rust-libdvbv5#7cae365d2795fc0541f392e728b568b7ef9c5131"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "540c8485a2084f7afd2b88240b107b400fa8232ab6d70d601f184907445c4a6d"
 dependencies = [
  "dvbv5-sys",
  "libc",
@@ -62,8 +63,9 @@ dependencies = [
 
 [[package]]
 name = "dvbv5-sys"
-version = "0.1.5"
-source = "git+https://gitlab.com/Russel/rust-libdvbv5-sys#c5475692d3a4554ff18048919205a7a02830426d"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e8b692f07c53c2aa2e7f1a7c7f6ac08b93983c4bb5a07a9132842598b3b75a3"
 dependencies = [
  "libc",
  "pkg-config",

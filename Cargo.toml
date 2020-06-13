@@ -11,10 +11,10 @@ edition = "2018"
 
 [dependencies]
 clap = "*"
-#dvbv5-sys = "*"
-dvbv5-sys = {git = "https://gitlab.com/Russel/rust-libdvbv5-sys"}
+dvbv5-sys = "*"
+#dvbv5-sys = {git = "https://gitlab.com/Russel/rust-libdvbv5-sys"}
 #dvbv5-sys = {path = "../../Public/Rust_Libdvbv5_Sys"}
-#dvbv5 = "*"
-dvbv5 = {git = "https://gitlab.com/Russel/rust-libdvbv5"}
+dvbv5 = "*"
+#dvbv5 = {git = "https://gitlab.com/Russel/rust-libdvbv5"}
 #dvbv5 = {path = "../../Public/Rust_Libdvbv5"}
 libc = "*"
