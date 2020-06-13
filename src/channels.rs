@@ -201,22 +201,19 @@ impl TransmitterData {
                 //let mut channels_file = None::<dvbv5::FilePtr>;
                 let mut channels_file = 0 as *mut dvbv5_sys::dvb_file;
                 for (index, entry) in self.ptr.iter().enumerate() {
-                    match dvbv5::retrieve_entry_prop(entry as *mut dvbv5_sys::dvb_entry, dvbv5::DTV_FREQUENCY) {
+                    match dvbv5::retrieve_entry_prop(&entry, dvbv5::DTV_FREQUENCY) {
                         Ok(frequency) => {
                             frontend_parameters.log(dvbv5::LOG_INFO, &format!("\nScanning frequency #{} {}", index + 1, frequency));
-                            // TODO How to get rid of the primitive pointer usage?
-                            unsafe {
-                                if !(*entry).channel.is_null() {
-                                    frontend_parameters.log(dvbv5::LOG_INFO, &format!("Channel name: {}", CStr::from_ptr((*entry).channel).to_str().unwrap()));
-                                }
-                                if !(*entry).vchannel.is_null() {
-                                    frontend_parameters.log(dvbv5::LOG_INFO, &format!("Channel number: {}", CStr::from_ptr((*entry).vchannel).to_str().unwrap()));
-                                }
-                                if !(*entry).location.is_null() {
-                                    frontend_parameters.log(dvbv5::LOG_INFO, &format!("Channel location: {}", CStr::from_ptr((*entry).location).to_str().unwrap()));
-                                }
+                            if let Ok(channel) = entry.get_channel() {
+                                frontend_parameters.log(dvbv5::LOG_INFO, &format!("Channel name: {}", channel));
                             }
-                            match dvbv5::ScanHandlerPtr::new(&frontend_parameters, entry as *mut dvbv5_sys::dvb_entry, &dmx_fd, Some(Self::frontend_check), other_nit, timeout_multiplier) {
+                            if let Ok(vchannel) = entry.get_vchannel() {
+                                frontend_parameters.log(dvbv5::LOG_INFO, &format!("Channel number: {}", vchannel));
+                            }
+                            if let Ok(location) = entry.get_location() {
+                                frontend_parameters.log(dvbv5::LOG_INFO, &format!("Channel location: {}", location));
+                            }
+                            match dvbv5::ScanHandlerPtr::new(&frontend_parameters, &entry, &dmx_fd, Some(Self::frontend_check), other_nit, timeout_multiplier) {
                                 Ok(scan_handler) => {
                                     if frontend_parameters.get_abort() != 0 { break; }
                                     match dvbv5::store_channel(channels_file, &frontend_parameters, &scan_handler, get_detected, get_nit) {
@@ -224,7 +221,7 @@ impl TransmitterData {
                                         Err(_) => frontend_parameters.log(dvbv5::LOG_INFO, "Failed to store some channels."),
                                     }
                                     if !dont_add_new_frequencies {
-                                        dvbv5::add_scaned_transponders(&frontend_parameters, &scan_handler, &self.ptr, entry as *mut dvbv5_sys::dvb_entry);
+                                        dvbv5::add_scaned_transponders(&frontend_parameters, &scan_handler, &self.ptr, &entry);
                                     }
                                 },
                                 Err(_) => frontend_parameters.log(dvbv5::LOG_INFO, "Failed to initialise scan handler."),
