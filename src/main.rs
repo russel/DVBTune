@@ -87,7 +87,7 @@ fn main() {
     let timeout_multiplier = matches.value_of("timeout_multiplier").unwrap().parse::<u32>().expect("Couldn't parse timeout multiplier value as an unsigned integer.");
     let verbose = matches.value_of("verbose").unwrap().parse::<u32>().expect("Couldn't parse verbose value value as an unsigned integer.");
     let transmitter_file_path = Path::new(matches.value_of("TRANSMITTER_FILE").unwrap());
-    let frontend_id = dvbv5::types::FrontendId{adapter_number, frontend_number};
+    let frontend_id = dvbv5::FrontendId{adapter_number, frontend_number};
     match channels::TransmitterData::new(transmitter_file_path) {
         Ok(transmitter_data) => {
             match transmitter_data.scan(
