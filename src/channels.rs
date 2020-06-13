@@ -49,23 +49,18 @@ pub struct ChannelsData {
 impl ChannelsData {
 
     /// Create a `ChannelData` instance given a `FilePtr` instance and a `FrontendParametersPtr` instance.
-    fn new(file_ptr: dvbv5::FilePtr, frontend_parameters_ptr: dvbv5::FrontendParametersPtr) -> Result<ChannelsData, ()> {
-        if file_ptr.is_null() { Err(()) }
-        else { Ok(ChannelsData{file_ptr, frontend_parameters_ptr}) }
+    fn new(file_ptr: dvbv5::FilePtr, frontend_parameters_ptr: dvbv5::FrontendParametersPtr) -> ChannelsData {
+        ChannelsData{file_ptr, frontend_parameters_ptr}
     }
 
     /// Write the data in this `ChannelData` instance to a file on the filestore.
     pub fn write(&self, output_path: &Path) -> bool {
-        if self.file_ptr.is_null() {
-            panic!("ChannelData instance not properly initialised.");
+        if dvbv5::write_file_format(&output_path, &self.file_ptr, self.frontend_parameters_ptr.get_current_sys(), dvbv5::dvb_file_formats::FILE_DVBV5) {
+            self.frontend_parameters_ptr.log(dvbv5::LOG_INFO, &format!("\nWrote virtual channels file to: {}", output_path.display()));
+            true
         } else {
-            if dvbv5::write_file_format(&output_path, &self.file_ptr, self.frontend_parameters_ptr.get_current_sys(), dvbv5::dvb_file_formats::FILE_DVBV5) {
-                self.frontend_parameters_ptr.log(dvbv5::LOG_INFO, &format!("\nWrote virtual channels file to: {}", output_path.display()));
-                true
-            } else {
-                self.frontend_parameters_ptr.log(dvbv5::LOG_INFO, &format!("\nWrite to {} failed.", output_path.display()));
-                false
-            }
+            self.frontend_parameters_ptr.log(dvbv5::LOG_INFO, &format!("\nWrite to {} failed.", output_path.display()));
+            false
         }
     }
 }
@@ -182,6 +177,9 @@ impl TransmitterData {
     /// MPEG-TS NIT table to add newly detected transponders. Default `true`.
     /// * `dont_add_new_frequencies` – an `Option` `bool` determining whether newly found
     /// frequencies should be scanned for channels. Default `false`.
+    /// * `verbose` – an `Option` `u32` stating the level of verbosity. Default 0.
+    /// * `use_legacy_call` – an `Option` `bool` specifying whether DVBv3 format should be used
+    /// rather than DVBv5 format. Default `false`.
     pub fn scan(
         &self,
         frontend_id: &dvbv5::FrontendId,
@@ -189,16 +187,17 @@ impl TransmitterData {
         timeout_multiplier: Option<u32>,
         get_detected: Option<bool>,
         get_nit: Option<bool>,
-        dont_add_new_frequencies: Option<bool>
+        dont_add_new_frequencies: Option<bool>,
+        verbose: Option<u32>,
+        use_legacy_call: Option<bool>,
     ) -> Result<ChannelsData, ()> {
         let get_detected = get_detected.unwrap_or(true);
         let get_nit = get_nit.unwrap_or(true);
         let dont_add_new_frequencies = dont_add_new_frequencies.unwrap_or(false);
-        match dvbv5::FrontendParametersPtr::new(&frontend_id,None, None) {
+        match dvbv5::FrontendParametersPtr::new(&frontend_id,verbose, use_legacy_call) {
             Ok(frontend_parameters) => {
                 let dmx_fd = dvbv5::DmxFd::new(&frontend_id).unwrap();
-                // TODO IS there a way of using FilrPtr instead of *mut dvbv5_sys::dvb_file
-                //let mut channels_file = None::<dvbv5::FilePtr>;
+                // TODO IS there a way of using FilePtr instead of *mut dvbv5_sys::dvb_file ?
                 let mut channels_file = 0 as *mut dvbv5_sys::dvb_file;
                 for (index, entry) in self.ptr.iter().enumerate() {
                     match dvbv5::retrieve_entry_prop(&entry, dvbv5::DTV_FREQUENCY) {
@@ -215,7 +214,7 @@ impl TransmitterData {
                             }
                             match dvbv5::ScanHandlerPtr::new(&frontend_parameters, &entry, &dmx_fd, Some(Self::frontend_check), other_nit, timeout_multiplier) {
                                 Ok(scan_handler) => {
-                                    if frontend_parameters.get_abort() != 0 { break; }
+                                    if frontend_parameters.get_abort() { break; }
                                     match dvbv5::store_channel(channels_file, &frontend_parameters, &scan_handler, get_detected, get_nit) {
                                         Ok(c_f) => channels_file = c_f,
                                         Err(_) => frontend_parameters.log(dvbv5::LOG_INFO, "Failed to store some channels."),
@@ -230,8 +229,7 @@ impl TransmitterData {
                         Err(_) =>{},
                     }
                 }
-                //Ok(ChannelsData::new(channels_file.unwrap(), frontend_parameters).unwrap())
-                Ok(ChannelsData::new(dvbv5::FilePtr::new_from_dvb_file_ptr(channels_file).unwrap(), frontend_parameters).unwrap())
+                Ok(ChannelsData::new(dvbv5::FilePtr::new_from_dvb_file_ptr(channels_file).unwrap(), frontend_parameters))
             },
             Err(e) => Err(e),
         }
@@ -254,7 +252,16 @@ mod tests {
                 Ok(transmitter_data) => {
                     // NB Assume that this FrontendId doesn't exist at the time of the test.
                     // Does any adapter have this many frontends?
-                    if transmitter_data.scan(&dvbv5::FrontendId{adapter_number: 254, frontend_number: 254}, None, None, None, None, None).is_ok() {
+                    if transmitter_data.scan(
+                        &dvbv5::FrontendId{adapter_number: 254, frontend_number: 254},
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                    ).is_ok() {
                         assert!(false, "Unexpected working scan.");
                     }
                 },
