@@ -13,6 +13,13 @@ This is essentially a Rust version of [dvbv5-scan](https://www.linuxtv.org/wiki/
 from [libdvbv5](https://linuxtv.org/docs/libdvbv5/). It is an example of using the Rust binding to libdvbv5,
 the FFI is [dvbv5_sys](https://crates.io/crates/dvbv5-sys) and the Rust side is [dvbv5](.https://crates.io/crates/dvbv5)
 
+## Acknowledgements
+
+This project benefits from support by [JetBrains](https://www.jetbrains.com); JetBrains provide
+a licence for [CLion](https://www.jetbrains.com/clion/). Although CLion is ostensibly a C and
+C++ IDE, there is [IntelliJ Rust](https://intellij-rust.github.io/) which makes CLion an
+excellent IDE for [Rust](https://www.rust-lang.org/) code development.
+
 ## Licence
 
 This code is licenced under GPLv3.
