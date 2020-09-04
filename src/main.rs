@@ -32,7 +32,7 @@
 
 use std::path::Path;
 
-use clap::{Arg, App};
+use clap::{App, Arg};
 
 mod channels;
 
@@ -41,53 +41,84 @@ fn main() {
         .version(env!("CARGO_PKG_VERSION"))
         .author("Russel Winder <russel@winder.org.uk>")
         .about("Generate a DVBv5 channels file from a DVBv5 transmitter file.")
-        .arg(Arg::with_name("adapter")
-            .short("a")
-            .long("adapter")
-            .value_name("NUMBER")
-            .help("Sets the adapter number to use.")
-            .takes_value(true)
-            .default_value("0"))
-        .arg(Arg::with_name("frontend")
-            .short("f")
-            .long("frontend")
-            .value_name("NUMBER")
-            .help("Sets the frontend number to use.")
-            .takes_value(true)
-            .default_value("0"))
-       .arg(Arg::with_name("output_path")
-            .short("o")
-            .long("output_path")
-            .value_name("PATH")
-            .help("Path to output file.")
-            .takes_value(true)
-            .default_value("dvb-channels.conf"))
-        .arg(Arg::with_name("timeout_multiplier")
-            .short("t")
-            .long("timeout_multiplier")
-            .value_name("MULTIPLIER")
-            .help("Multiplier used for timeouts to obtain tables.")
-            .takes_value(true)
-            .default_value("1"))
-        .arg(Arg::with_name("verbose")
-            .short("v")
-            .long("verbose")
-            .value_name("verbose")
-            .help("Verbosity level: the bigger the integer the more messages get output.")
-            .takes_value(true)
-            .default_value("0"))
-        .arg(Arg::with_name("TRANSMITTER_FILE")
-            .help("Path to the transmitter file to use as input.")
-            .required(true)
-            .index(1))
+        .arg(
+            Arg::with_name("adapter")
+                .short("a")
+                .long("adapter")
+                .value_name("NUMBER")
+                .help("Sets the adapter number to use.")
+                .takes_value(true)
+                .default_value("0"),
+        )
+        .arg(
+            Arg::with_name("frontend")
+                .short("f")
+                .long("frontend")
+                .value_name("NUMBER")
+                .help("Sets the frontend number to use.")
+                .takes_value(true)
+                .default_value("0"),
+        )
+        .arg(
+            Arg::with_name("output_path")
+                .short("o")
+                .long("output_path")
+                .value_name("PATH")
+                .help("Path to output file.")
+                .takes_value(true)
+                .default_value("dvb-channels.conf"),
+        )
+        .arg(
+            Arg::with_name("timeout_multiplier")
+                .short("t")
+                .long("timeout_multiplier")
+                .value_name("MULTIPLIER")
+                .help("Multiplier used for timeouts to obtain tables.")
+                .takes_value(true)
+                .default_value("1"),
+        )
+        .arg(
+            Arg::with_name("verbose")
+                .short("v")
+                .long("verbose")
+                .value_name("verbose")
+                .help("Verbosity level: the bigger the integer the more messages get output.")
+                .takes_value(true)
+                .default_value("0"),
+        )
+        .arg(
+            Arg::with_name("TRANSMITTER_FILE")
+                .help("Path to the transmitter file to use as input.")
+                .required(true)
+                .index(1),
+        )
         .get_matches();
-    let adapter_number = matches.value_of("adapter").unwrap().parse::<u8>().expect("Couldn't parse adapter value as a positive integer.");
-    let frontend_number = matches.value_of("frontend").unwrap().parse::<u8>().expect("Couldn't parse frontend value as a positive integer.");
+    let adapter_number = matches
+        .value_of("adapter")
+        .unwrap()
+        .parse::<u8>()
+        .expect("Couldn't parse adapter value as a positive integer.");
+    let frontend_number = matches
+        .value_of("frontend")
+        .unwrap()
+        .parse::<u8>()
+        .expect("Couldn't parse frontend value as a positive integer.");
     let output_path = Path::new(matches.value_of("output_path").unwrap());
-    let timeout_multiplier = matches.value_of("timeout_multiplier").unwrap().parse::<u32>().expect("Couldn't parse timeout multiplier value as an unsigned integer.");
-    let verbose = matches.value_of("verbose").unwrap().parse::<u32>().expect("Couldn't parse verbose value value as an unsigned integer.");
+    let timeout_multiplier = matches
+        .value_of("timeout_multiplier")
+        .unwrap()
+        .parse::<u32>()
+        .expect("Couldn't parse timeout multiplier value as an unsigned integer.");
+    let verbose = matches
+        .value_of("verbose")
+        .unwrap()
+        .parse::<u32>()
+        .expect("Couldn't parse verbose value value as an unsigned integer.");
     let transmitter_file_path = Path::new(matches.value_of("TRANSMITTER_FILE").unwrap());
-    let frontend_id = dvbv5::FrontendId{adapter_number, frontend_number};
+    let frontend_id = dvbv5::FrontendId {
+        adapter_number,
+        frontend_number,
+    };
     match channels::TransmitterData::new(transmitter_file_path) {
         Ok(transmitter_data) => {
             match transmitter_data.scan(
@@ -101,13 +132,13 @@ fn main() {
                 None,
             ) {
                 Ok(channels_data) => {
-                    if ! channels_data.write(output_path) {
+                    if !channels_data.write(output_path) {
                         println!("**** Error writing channels data ****");
                     }
-                },
+                }
                 Err(_) => println!("**** No receiver, cannot scan. *****"),
             };
-        },
+        }
         Err(_) => println!("**** Could not get transmitter data. ****"),
     };
 }

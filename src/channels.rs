@@ -19,8 +19,8 @@
 
 //! Module realising the abstractions needed for this application.
 
-use std::ffi::{CStr,CString};
-use std::io::{Write, stdout};
+use std::ffi::{CStr, CString};
+use std::io::{stdout, Write};
 use std::os::unix::io::AsRawFd;
 use std::path::Path;
 use std::thread::sleep;
@@ -41,19 +41,38 @@ pub struct ChannelsData {
 }
 
 impl ChannelsData {
-
     /// Create a `ChannelData` instance given a `FilePtr` instance and a `FrontendParametersPtr` instance.
-    fn new(file_ptr: dvbv5::FilePtr, frontend_parameters_ptr: dvbv5::FrontendParametersPtr) -> ChannelsData {
-        ChannelsData{file_ptr, frontend_parameters_ptr}
+    fn new(
+        file_ptr: dvbv5::FilePtr,
+        frontend_parameters_ptr: dvbv5::FrontendParametersPtr,
+    ) -> ChannelsData {
+        ChannelsData {
+            file_ptr,
+            frontend_parameters_ptr,
+        }
     }
 
     /// Write the data in this `ChannelData` instance to a file on the filestore.
     pub fn write(&self, output_path: &Path) -> bool {
-        if dvbv5::write_file_format(&output_path, &self.file_ptr, self.frontend_parameters_ptr.get_current_sys(), dvbv5::dvb_file_formats::FILE_DVBV5) {
-            self.frontend_parameters_ptr.log(dvbv5::log_level::LOG_INFO, &format!("\nWrote virtual channels file to: {}", output_path.display()));
+        if dvbv5::write_file_format(
+            &output_path,
+            &self.file_ptr,
+            self.frontend_parameters_ptr.get_current_sys(),
+            dvbv5::dvb_file_formats::FILE_DVBV5,
+        ) {
+            self.frontend_parameters_ptr.log(
+                dvbv5::log_level::LOG_INFO,
+                &format!(
+                    "\nWrote virtual channels file to: {}",
+                    output_path.display()
+                ),
+            );
             true
         } else {
-            self.frontend_parameters_ptr.log(dvbv5::log_level::LOG_INFO, &format!("\nWrite to {} failed.", output_path.display()));
+            self.frontend_parameters_ptr.log(
+                dvbv5::log_level::LOG_INFO,
+                &format!("\nWrite to {} failed.", output_path.display()),
+            );
             false
         }
     }
@@ -70,11 +89,10 @@ pub struct TransmitterData {
 }
 
 impl TransmitterData {
-
     /// Open the transmitter file.
     pub fn new(transmitter_file: &Path) -> Result<TransmitterData, ()> {
         match dvbv5::FilePtr::new(transmitter_file, None, None) {
-            Ok(ptr) => Ok(TransmitterData{ptr}),
+            Ok(ptr) => Ok(TransmitterData { ptr }),
             Err(_) => Err(()),
         }
     }
@@ -88,19 +106,37 @@ impl TransmitterData {
     /// Return value is either 0 meaning the scan was aborted or a lock was achieved and
     /// details added to the file, or -1 to indicate no lock was achieved and there was no
     /// abort after a number of tries.
-    extern "C" fn frontend_check(_arguments: *mut std::ffi::c_void, frontend_parameters: *mut dvbv5_sys::dvb_v5_fe_parms) -> i32 {
+    extern "C" fn frontend_check(
+        _arguments: *mut std::ffi::c_void,
+        frontend_parameters: *mut dvbv5_sys::dvb_v5_fe_parms,
+    ) -> i32 {
         unsafe {
             let logger = (*frontend_parameters).logfunc.unwrap();
             let mut status = dvbv5::fe_status::FE_NONE as u32;
             let mut n_status_lines = 0 as u32;
             let mut stream = stdout();
             for _ in 0..20 {
-                if (*frontend_parameters).abort != 0 { return 0; }
+                if (*frontend_parameters).abort != 0 {
+                    return 0;
+                }
                 if dvbv5_sys::dvb_fe_get_stats(frontend_parameters) != 0 {
-                    logger(dvbv5::log_level::LOG_INFO as i32, CString::new("dvb_fe_get_stats failed.").unwrap().as_ptr());
+                    logger(
+                        dvbv5::log_level::LOG_INFO as i32,
+                        CString::new("dvb_fe_get_stats failed.").unwrap().as_ptr(),
+                    );
                 } else {
-                    if dvbv5_sys::dvb_fe_retrieve_stats(frontend_parameters, dvbv5::dtv_retrievable_properties::DTV_STATUS as u32, &mut status) != 0 {
-                        logger(dvbv5::log_level::LOG_INFO as i32, CString::new("dvb_fe_retrieve_stats of DVT_STATUS failed.").unwrap().as_ptr());
+                    if dvbv5_sys::dvb_fe_retrieve_stats(
+                        frontend_parameters,
+                        dvbv5::dtv_retrievable_properties::DTV_STATUS as u32,
+                        &mut status,
+                    ) != 0
+                    {
+                        logger(
+                            dvbv5::log_level::LOG_INFO as i32,
+                            CString::new("dvb_fe_retrieve_stats of DVT_STATUS failed.")
+                                .unwrap()
+                                .as_ptr(),
+                        );
                         status = dvbv5::fe_status::FE_NONE as u32;
                     } else {
                         if libc::isatty(stream.as_raw_fd()) != 0 {
@@ -127,18 +163,84 @@ impl TransmitterData {
                         //  Should the code be testing that there are no errors?
                         //
                         let mut show = 0;
-                        dvbv5_sys::dvb_fe_snprintf_stat(frontend_parameters, dvbv5::dtv_retrievable_properties::DTV_STATUS as u32, 0 as *mut i8, 0, &mut current_position, &mut usable_length, &mut show);
+                        dvbv5_sys::dvb_fe_snprintf_stat(
+                            frontend_parameters,
+                            dvbv5::dtv_retrievable_properties::DTV_STATUS as u32,
+                            0 as *mut i8,
+                            0,
+                            &mut current_position,
+                            &mut usable_length,
+                            &mut show,
+                        );
                         for i in 0..dvbv5_sys::MAX_DTV_STATS as i32 {
                             show = 1;
-                            dvbv5_sys::dvb_fe_snprintf_stat(frontend_parameters, dvbv5::dtv_retrievable_properties::DTV_QUALITY as u32, CString::new("Quality").unwrap().as_ptr() as *mut i8, i, &mut current_position, &mut usable_length, &mut show);
-                            dvbv5_sys::dvb_fe_snprintf_stat(frontend_parameters, dvbv5::dtv_retrievable_properties::DTV_STAT_SIGNAL_STRENGTH as u32, CString::new("Signal").unwrap().as_ptr() as *mut i8, i, &mut current_position, &mut usable_length, &mut show);
-                            dvbv5_sys::dvb_fe_snprintf_stat(frontend_parameters, dvbv5::dtv_retrievable_properties::DTV_STAT_CNR as u32, CString::new("C/N").unwrap().as_ptr() as *mut i8, i, &mut current_position, &mut usable_length, &mut show);
-                            dvbv5_sys::dvb_fe_snprintf_stat(frontend_parameters, dvbv5::dtv_retrievable_properties::DTV_STAT_ERROR_BLOCK_COUNT as u32, CString::new("UCB").unwrap().as_ptr() as *mut i8, i, &mut current_position, &mut usable_length, &mut show);
-                            dvbv5_sys::dvb_fe_snprintf_stat(frontend_parameters, dvbv5::dtv_retrievable_properties::DTV_BER as u32, CString::new("postBER").unwrap().as_ptr() as *mut i8, i, &mut current_position, &mut usable_length, &mut show);
-                            dvbv5_sys::dvb_fe_snprintf_stat(frontend_parameters, dvbv5::dtv_retrievable_properties::DTV_PRE_BER as u32, CString::new("preBER").unwrap().as_ptr() as *mut i8, i, &mut current_position, &mut usable_length, &mut show);
-                            dvbv5_sys::dvb_fe_snprintf_stat(frontend_parameters, dvbv5::dtv_retrievable_properties::DTV_PER as u32, CString::new("PER").unwrap().as_ptr() as *mut i8, i, &mut current_position, &mut usable_length, &mut show);
+                            dvbv5_sys::dvb_fe_snprintf_stat(
+                                frontend_parameters,
+                                dvbv5::dtv_retrievable_properties::DTV_QUALITY as u32,
+                                CString::new("Quality").unwrap().as_ptr() as *mut i8,
+                                i,
+                                &mut current_position,
+                                &mut usable_length,
+                                &mut show,
+                            );
+                            dvbv5_sys::dvb_fe_snprintf_stat(
+                                frontend_parameters,
+                                dvbv5::dtv_retrievable_properties::DTV_STAT_SIGNAL_STRENGTH as u32,
+                                CString::new("Signal").unwrap().as_ptr() as *mut i8,
+                                i,
+                                &mut current_position,
+                                &mut usable_length,
+                                &mut show,
+                            );
+                            dvbv5_sys::dvb_fe_snprintf_stat(
+                                frontend_parameters,
+                                dvbv5::dtv_retrievable_properties::DTV_STAT_CNR as u32,
+                                CString::new("C/N").unwrap().as_ptr() as *mut i8,
+                                i,
+                                &mut current_position,
+                                &mut usable_length,
+                                &mut show,
+                            );
+                            dvbv5_sys::dvb_fe_snprintf_stat(
+                                frontend_parameters,
+                                dvbv5::dtv_retrievable_properties::DTV_STAT_ERROR_BLOCK_COUNT
+                                    as u32,
+                                CString::new("UCB").unwrap().as_ptr() as *mut i8,
+                                i,
+                                &mut current_position,
+                                &mut usable_length,
+                                &mut show,
+                            );
+                            dvbv5_sys::dvb_fe_snprintf_stat(
+                                frontend_parameters,
+                                dvbv5::dtv_retrievable_properties::DTV_BER as u32,
+                                CString::new("postBER").unwrap().as_ptr() as *mut i8,
+                                i,
+                                &mut current_position,
+                                &mut usable_length,
+                                &mut show,
+                            );
+                            dvbv5_sys::dvb_fe_snprintf_stat(
+                                frontend_parameters,
+                                dvbv5::dtv_retrievable_properties::DTV_PRE_BER as u32,
+                                CString::new("preBER").unwrap().as_ptr() as *mut i8,
+                                i,
+                                &mut current_position,
+                                &mut usable_length,
+                                &mut show,
+                            );
+                            dvbv5_sys::dvb_fe_snprintf_stat(
+                                frontend_parameters,
+                                dvbv5::dtv_retrievable_properties::DTV_PER as u32,
+                                CString::new("PER").unwrap().as_ptr() as *mut i8,
+                                i,
+                                &mut current_position,
+                                &mut usable_length,
+                                &mut show,
+                            );
                             if current_position != buffer.as_ptr() as *mut i8 {
-                                let line = CStr::from_ptr(buffer.as_ptr() as *mut i8).to_str().unwrap();
+                                let line =
+                                    CStr::from_ptr(buffer.as_ptr() as *mut i8).to_str().unwrap();
                                 if n_status_lines != 0 {
                                     write!(stream, "\t{}\n", line).unwrap();
                                 } else {
@@ -152,7 +254,9 @@ impl TransmitterData {
                         stream.flush().unwrap();
                     }
                 }
-                if status & dvbv5::fe_status::FE_HAS_LOCK as u32 != 0 { break; }
+                if status & dvbv5::fe_status::FE_HAS_LOCK as u32 != 0 {
+                    break;
+                }
                 sleep(Duration::from_millis(400));
             }
             if libc::isatty(stream.as_raw_fd()) != 0 {
@@ -160,7 +264,11 @@ impl TransmitterData {
                 write!(stream, "\x1b[22;39m").unwrap();
                 stream.flush().unwrap();
             }
-            if status & dvbv5::fe_status::FE_HAS_LOCK as u32 != 0 { 0 } else { -1 }
+            if status & dvbv5::fe_status::FE_HAS_LOCK as u32 != 0 {
+                0
+            } else {
+                -1
+            }
         }
     }
 
@@ -194,46 +302,88 @@ impl TransmitterData {
         let get_detected = get_detected.unwrap_or(true);
         let get_nit = get_nit.unwrap_or(true);
         let dont_add_new_frequencies = dont_add_new_frequencies.unwrap_or(false);
-        match dvbv5::FrontendParametersPtr::new(&frontend_id,verbose, use_legacy_call) {
+        match dvbv5::FrontendParametersPtr::new(&frontend_id, verbose, use_legacy_call) {
             Ok(frontend_parameters) => {
                 let dmx_fd = dvbv5::DmxFd::new(&frontend_id).unwrap();
                 // TODO Is there a way of using FilePtr instead of *mut dvbv5_sys::dvb_file?
                 //   Possibly not because of the RAII of FilePtr instances.
                 let mut channels_file = 0 as *mut dvbv5_sys::dvb_file;
                 for (index, entry) in self.ptr.iter().enumerate() {
-                    match dvbv5::retrieve_entry_prop(&entry, dvbv5::dtv_retrievable_properties::DTV_FREQUENCY) {
+                    match dvbv5::retrieve_entry_prop(
+                        &entry,
+                        dvbv5::dtv_retrievable_properties::DTV_FREQUENCY,
+                    ) {
                         Ok(frequency) => {
-                            frontend_parameters.log(dvbv5::log_level::LOG_INFO, &format!("\nScanning frequency #{} {}", index + 1, frequency));
+                            frontend_parameters.log(
+                                dvbv5::log_level::LOG_INFO,
+                                &format!("\nScanning frequency #{} {}", index + 1, frequency),
+                            );
                             if let Ok(channel) = entry.get_channel() {
-                                frontend_parameters.log(dvbv5::log_level::LOG_INFO, &format!("Channel name: {}", channel));
+                                frontend_parameters.log(
+                                    dvbv5::log_level::LOG_INFO,
+                                    &format!("Channel name: {}", channel),
+                                );
                             }
                             if let Ok(vchannel) = entry.get_vchannel() {
-                                frontend_parameters.log(dvbv5::log_level::LOG_INFO, &format!("Channel number: {}", vchannel));
+                                frontend_parameters.log(
+                                    dvbv5::log_level::LOG_INFO,
+                                    &format!("Channel number: {}", vchannel),
+                                );
                             }
                             if let Ok(location) = entry.get_location() {
-                                frontend_parameters.log(dvbv5::log_level::LOG_INFO, &format!("Channel location: {}", location));
+                                frontend_parameters.log(
+                                    dvbv5::log_level::LOG_INFO,
+                                    &format!("Channel location: {}", location),
+                                );
                             }
-                            match dvbv5::ScanHandlerPtr::new(&frontend_parameters, &entry, &dmx_fd, Some(Self::frontend_check), other_nit, timeout_multiplier) {
+                            match dvbv5::ScanHandlerPtr::new(
+                                &frontend_parameters,
+                                &entry,
+                                &dmx_fd,
+                                Some(Self::frontend_check),
+                                other_nit,
+                                timeout_multiplier,
+                            ) {
                                 Ok(scan_handler) => {
-                                    if frontend_parameters.get_abort() { break; }
-                                    match dvbv5::store_channel(channels_file, &frontend_parameters, &scan_handler, get_detected, get_nit) {
+                                    if frontend_parameters.get_abort() {
+                                        break;
+                                    }
+                                    match dvbv5::store_channel(
+                                        channels_file,
+                                        &frontend_parameters,
+                                        &scan_handler,
+                                        get_detected,
+                                        get_nit,
+                                    ) {
                                         Ok(c_f) => channels_file = c_f,
-                                        Err(_) => frontend_parameters.log(dvbv5::log_level::LOG_INFO, "Failed to store some channels."),
+                                        Err(_) => frontend_parameters.log(
+                                            dvbv5::log_level::LOG_INFO,
+                                            "Failed to store some channels.",
+                                        ),
                                     }
                                     if !dont_add_new_frequencies {
-                                        dvbv5::add_scaned_transponders(&frontend_parameters, &scan_handler, &self.ptr, &entry);
+                                        dvbv5::add_scaned_transponders(
+                                            &frontend_parameters,
+                                            &scan_handler,
+                                            &self.ptr,
+                                            &entry,
+                                        );
                                     }
-                                },
-                                Err(_) => frontend_parameters.log(dvbv5::log_level::LOG_INFO, "Failed to initialise scan handler."),
+                                }
+                                Err(_) => frontend_parameters.log(
+                                    dvbv5::log_level::LOG_INFO,
+                                    "Failed to initialise scan handler.",
+                                ),
                             }
-                        },
-                        Err(_) =>{},
+                        }
+                        Err(_) => {}
                     }
                 }
                 Ok(ChannelsData::new(
                     dvbv5::FilePtr::new_from_dvb_file_ptr(channels_file).unwrap(),
-                    frontend_parameters))
-            },
+                    frontend_parameters,
+                ))
+            }
             Err(e) => Err(e),
         }
     }
@@ -255,24 +405,29 @@ mod tests {
                 Ok(transmitter_data) => {
                     // NB Assume that this FrontendId doesn't exist at the time of the test.
                     // Does any adapter have this many frontends?
-                    if transmitter_data.scan(
-                        &dvbv5::FrontendId{adapter_number: 254, frontend_number: 254},
-                        None,
-                        None,
-                        None,
-                        None,
-                        None,
-                        None,
-                        None,
-                    ).is_ok() {
+                    if transmitter_data
+                        .scan(
+                            &dvbv5::FrontendId {
+                                adapter_number: 254,
+                                frontend_number: 254,
+                            },
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                        )
+                        .is_ok()
+                    {
                         assert!(false, "Unexpected working scan.");
                     }
-                },
-                Err(e) => assert!(false, "Could not read transmitter data."),
+                }
+                Err(_) => assert!(false, "Could not read transmitter data"),
             }
         } else {
             println!("Path {} did not exist, no test undertaken.", path.display());
         }
-
     }
 }
